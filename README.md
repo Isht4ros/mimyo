@@ -37,6 +37,13 @@ Want Discord rich presence too?
 ```bash
 pip install "mimyo[discord]"
 ```
+### Installing from source
+
+```bash
+git clone https://github.com/Isht4ros/mimyo.git
+cd mimyo
+pip install .
+```
 
 ## Usage
 
