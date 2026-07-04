@@ -3,7 +3,7 @@
 ![PyPI](https://img.shields.io/pypi/v/mimyo)
 ![Python](https://img.shields.io/pypi/pyversions/mimyo)
 ![License](https://img.shields.io/pypi/l/mimyo)
-![Downloads](https://img.shields.io/pypi/dm/mimyo)
+[![Downloads](https://static.pepy.tech/badge/mimyo)](https://pepy.tech/project/mimyo)
 
 ![pygame-ce](https://img.shields.io/badge/pygame--ce-2.5.7-brightgreen)
 ![mutagen](https://img.shields.io/badge/mutagen-1.47.0-brightgreen)
