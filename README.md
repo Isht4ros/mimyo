@@ -64,9 +64,9 @@ python -m mimyo
 By default, mimyo looks for a `Music` folder in your home directory. You can point it somewhere else and it'll remember for next time:
 
 ```bash
-mimyo --path "D:\Music"
+mimyo --path "/path/to/music"
 # or
-mimyo -p "D:\Music"
+mimyo -p "/path/to/music"
 ```
 
 ## License
