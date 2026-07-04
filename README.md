@@ -1,3 +1,4 @@
+<img width="1476" height="821" alt="ss1" src="https://github.com/user-attachments/assets/780dc4b2-73d3-468d-9664-db9dfa624c22" />
 # mimyo
 
 ![PyPI](https://img.shields.io/pypi/v/mimyo)
@@ -22,7 +23,7 @@ A simple vibecoded terminal music player that takes inspiration from [rmpc](http
 - Hooks into Discord rich presence if you want it to
 
 <img width="1686" height="799" alt="ss1" src="https://github.com/user-attachments/assets/a8b7894f-4547-4177-b46d-3f4dda3bd673" />
-<img width="1685" height="795" alt="ss2" src="https://github.com/user-attachments/assets/846e0a82-f017-46cf-af2e-644c2923ee49" />
+<img width="1476" height="821" alt="ss2" src="https://github.com/user-attachments/assets/7e78e902-6c45-4f83-85a3-17f851c5b495" />
 <img width="929" height="373" alt="ss3" src="https://github.com/user-attachments/assets/12b7eaaf-65e3-4cb7-827d-dc83b8af5fe1" />
 
 ## Installation
