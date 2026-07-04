@@ -903,6 +903,47 @@ class PlayerApp(App):
         self._yt_spinner_idx = (self._yt_spinner_idx + 1) % len(SPINNER_FRAMES)
         self._render_yt_status()
 
+    def _yt_download(self, url: str):
+        """Download a YouTube URL in a background thread and add it to the queue."""
+        def _set_status(msg: str):
+            self._yt_status_suffix = msg
+            if msg:
+                self._yt_spinner_start()
+                self._render_yt_status()
+            else:
+                self._yt_spinner_stop()
+                try:
+                    self.query_one("#yt-progress", Label).update("")
+                except Exception:
+                    pass
+
+        _set_status("Starting download…")
+
+        def _download():
+            def _progress(msg: str):
+                self.call_from_thread(_set_status, msg)
+
+            result = fetch_youtube_audio(url, on_progress=_progress)
+            if result is None or isinstance(result, str):
+                err = result or "Failed to fetch YouTube audio"
+                self.call_from_thread(_set_status, "")
+                self.call_from_thread(self.notify, f"YouTube error: {err}", severity="error")
+                return
+            path, title, duration, thumb_path = result
+            track = YouTubeTrack(path, title, duration, thumb_path)
+
+            def _add():
+                _set_status("")
+                self.queue.append(track)
+                self._rebuild_queue_list()
+                self.notify(f"Added: {title}")
+                if self.player.current is None:
+                    self._play_index(len(self.queue) - 1)
+
+            self.call_from_thread(_add)
+
+        threading.Thread(target=_download, daemon=True).start()
+
     def _render_yt_status(self):
         try:
             label = self.query_one("#yt-progress", Label)
@@ -932,6 +973,20 @@ class PlayerApp(App):
                 item.styles.background = "#2d4f67"
 
     def on_list_view_selected(self, event: ListView.Selected) -> None:
+        from .widgets.youtube import YTResultItem
+        if event.list_view.id == "yt-results":
+            item = event.item
+            if isinstance(item, YTResultItem):
+                result = item.result
+                url = result["url"]
+                self.query_one("#yt-bar", YoutubeBar).hide()
+                try:
+                    self.query_one("#queue-list", ListView).focus()
+                except Exception:
+                    pass
+                self._yt_download(url)
+            return
+
         item = event.item
         if isinstance(item, PlaylistItem):
             paths = self.playlists.get(item.playlist_name, [])
@@ -991,57 +1046,49 @@ class PlayerApp(App):
         if event.input.id != "yt-input":
             return
 
-        url = event.value.strip()
-        if "youtube.com/watch" in url and "v=" in url:
-            from urllib.parse import urlparse, parse_qs, urlencode, urlunparse
-            parsed = urlparse(url)
-            qs = parse_qs(parsed.query, keep_blank_values=True)
-            if "v" in qs:
-                clean_query = urlencode({"v": qs["v"][0]})
-                url = urlunparse(parsed._replace(query=clean_query))
-
-        self.query_one("#yt-bar", YoutubeBar).hide()
-        if not url:
+        raw = event.value.strip()
+        if not raw:
             return
 
-        def _set_status(msg: str):
-            self._yt_status_suffix = msg
-            if msg:
-                self._yt_spinner_start()
-                self._render_yt_status()
-            else:
-                self._yt_spinner_stop()
-                try:
-                    self.query_one("#yt-progress", Label).update("")
-                except Exception:
-                    pass
+        # Detect URL vs search query
+        is_url = raw.startswith("http://") or raw.startswith("https://") or "youtu.be/" in raw
 
-        _set_status("Starting download…")
+        if is_url:
+            # --- Direct URL: clean and download immediately ---
+            url = raw
+            if "youtube.com/watch" in url and "v=" in url:
+                from urllib.parse import urlparse, parse_qs, urlencode, urlunparse
+                parsed = urlparse(url)
+                qs = parse_qs(parsed.query, keep_blank_values=True)
+                if "v" in qs:
+                    clean_query = urlencode({"v": qs["v"][0]})
+                    url = urlunparse(parsed._replace(query=clean_query))
+            self.query_one("#yt-bar", YoutubeBar).hide()
+            try:
+                self.query_one("#queue-list", ListView).focus()
+            except Exception:
+                pass
+            self._yt_download(url)
+        else:
+            # --- Search query: fetch results and show picker ---
+            bar = self.query_one("#yt-bar", YoutubeBar)
+            bar.show_hint("Searching…")
 
-        def _download():
-            def _progress(msg: str):
-                self.call_from_thread(_set_status, msg)
+            def _search():
+                from .widgets.youtube import search_youtube
+                results = search_youtube(raw, max_results=5)
+                if isinstance(results, str):
+                    self.call_from_thread(self.notify, f"Search error: {results}", severity="error")
+                    self.call_from_thread(bar.show_hint, "")
+                    return
+                if not results:
+                    self.call_from_thread(self.notify, "No results found", severity="warning")
+                    self.call_from_thread(bar.show_hint, "")
+                    return
+                self.call_from_thread(bar.show_results, results)
+                self.call_from_thread(bar.show_hint, "")
 
-            result = fetch_youtube_audio(url, on_progress=_progress)
-            if result is None or isinstance(result, str):
-                err = result or "Failed to fetch YouTube audio"
-                self.call_from_thread(_set_status, "")
-                self.call_from_thread(self.notify, f"YouTube error: {err}", severity="error")
-                return
-            path, title, duration, thumb_path = result
-            track = YouTubeTrack(path, title, duration, thumb_path)
-
-            def _add():
-                _set_status("")
-                self.queue.append(track)
-                self._rebuild_queue_list()
-                self.notify(f"Added: {title}")
-                if self.player.current is None:
-                    self._play_index(len(self.queue) - 1)
-
-            self.call_from_thread(_add)
-
-        threading.Thread(target=_download, daemon=True).start()
+            threading.Thread(target=_search, daemon=True).start()
 
     # ── Library search ────────────────────────────────────────────────────────
 
@@ -1127,6 +1174,24 @@ class PlayerApp(App):
             overlay = self.query_one("#keybind-overlay", KeybindOverlay)
             if overlay.display:
                 overlay.call_after_refresh(overlay._reposition)
+        except Exception:
+            pass
+        try:
+            yt_bar = self.query_one("#yt-bar", YoutubeBar)
+            if "visible" in yt_bar.classes:
+                yt_bar.call_after_refresh(yt_bar._reposition)
+        except Exception:
+            pass
+        try:
+            pl_bar = self.query_one("#playlist-bar", PlaylistBar)
+            if "visible" in pl_bar.classes:
+                pl_bar.call_after_refresh(pl_bar._reposition)
+        except Exception:
+            pass
+        try:
+            sb = self.query_one("#search-bar", SearchBar)
+            if "visible" in sb.classes:
+                sb.call_after_refresh(sb._reposition)
         except Exception:
             pass
 

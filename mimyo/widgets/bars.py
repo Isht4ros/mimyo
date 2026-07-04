@@ -17,8 +17,24 @@ class PlaylistBar(Static):
         inp.border_title = "Save Playlist"
         inp.border_subtitle = "Enter to save · Esc to cancel"
 
+    def _reposition(self) -> None:
+        try:
+            parent = self.parent
+            if parent is None:
+                return
+            pw = parent.content_size.width
+            w = self.outer_size.width or 60
+            x = max(0, (pw - w) // 2)
+            self.styles.offset = (x, 2)
+        except Exception:
+            pass
+
+    def on_resize(self) -> None:
+        self._reposition()
+
     def show(self):
         self.add_class("visible")
+        self.call_after_refresh(self._reposition)
         try:
             self.query_one("#pl-input").focus()
         except Exception:
@@ -49,8 +65,24 @@ class SearchBar(Static):
         inp.border_title = "Search Library"
         inp.border_subtitle = "Enter to jump · Esc to cancel"
 
+    def _reposition(self) -> None:
+        try:
+            parent = self.parent
+            if parent is None:
+                return
+            pw = parent.content_size.width
+            w = self.outer_size.width or 60
+            x = max(0, (pw - w) // 2)
+            self.styles.offset = (x, 2)
+        except Exception:
+            pass
+
+    def on_resize(self) -> None:
+        self._reposition()
+
     def show(self):
         self.add_class("visible")
+        self.call_after_refresh(self._reposition)
         try:
             self.query_one("#search-input").focus()
         except Exception:

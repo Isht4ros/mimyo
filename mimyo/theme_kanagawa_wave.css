@@ -203,9 +203,9 @@ ListView > ListItem.playing .queue-item-num    { color: $queue-num-playing-color
 #np-progress-row { height: 1; }
 #np-time     { width: 5; color: #727169; content-align: left middle; }
 #np-bar      { width: 1fr; height: 1; content-align: left middle; }
-#np-duration { width: 5; color: #727169; content-align: right middle; }
+#np-duration { width: 5; color: #727169; content-align: center middle; }
 #np-status   { color: #98bb6c; width: 12; content-align: left middle; }
-#np-vol      { color: #727169; width: 8; content-align: right middle; }
+#np-vol      { color: #727169; width: 8; content-align: center middle; }
 
 /* ════════════════════════════════════════════════════════════════════════════
    SPLASH SCREEN
@@ -254,12 +254,12 @@ SplashScreen {
 
 PlaylistBar {
     layer: overlay;
-    position: absolute;
-    width: 60;
+    dock: top;
+    width: 100%;
     height: auto;
     background: transparent;
-    border: none;
-    padding: 0;
+    align: center top;
+    margin-top: 2;
     display: none;
 }
 PlaylistBar.visible {
@@ -269,7 +269,8 @@ PlaylistBar.visible {
     background: #16161d;
     color: #dcd7ba;
     height: 3;
-    width: 60;
+    width: 90%;
+    max-width: 76;
     border: round #957fb8;
     padding: 0 1;
 }
@@ -283,12 +284,12 @@ PlaylistBar.visible {
 
 SearchBar {
     layer: overlay;
-    position: absolute;
-    width: 60;
+    dock: top;
+    width: 100%;
     height: auto;
     background: transparent;
-    border: none;
-    padding: 0;
+    align: center top;
+    margin-top: 2;
     display: none;
 }
 SearchBar.visible {
@@ -298,7 +299,8 @@ SearchBar.visible {
     background: #16161d;
     color: #dcd7ba;
     height: 3;
-    width: 60;
+    width: 90%;
+    max-width: 76;
     border: round #e6c384;
     padding: 0 1;
 }
@@ -312,12 +314,12 @@ SearchBar.visible {
 
 YoutubeBar {
     layer: overlay;
-    position: absolute;
-    width: 60;
+    dock: top;
+    width: 100%;
     height: auto;
     background: transparent;
-    border: none;
-    padding: 0;
+    align: center top;
+    margin-top: 2;
     display: none;
 }
 YoutubeBar.visible {
@@ -327,7 +329,8 @@ YoutubeBar.visible {
     background: #16161d;
     color: #dcd7ba;
     height: 3;
-    width: 60;
+    width: 90%;
+    max-width: 76;
     border: round #7e9cd8;
     padding: 0 1;
 }
@@ -338,51 +341,6 @@ YoutubeBar.visible {
     color: #16161d;
     background: #7e9cd8;
 }
-
-.yt-hint {
-    color: #727169;
-    height: 1;
-    width: 60;
-    padding: 0 1;
-}
-
-#yt-results {
-    width: 60;
-    height: auto;
-    max-height: 15;
-    background: #16161d;
-    border: round #7e9cd8;
-    margin-top: -1;
-}
-
-#yt-results > ListItem {
-    background: #13131c;
-    padding: 0;
-}
-
-#yt-results > ListItem:hover,
-#yt-results > ListItem.--highlight {
-    background: #1f2335;
-}
-
-.yt-result-title {
-    color: #dcd7ba;
-    width: 100%;
-    padding: 0 1;
-}
-
-.yt-result-meta {
-    color: #727169;
-    width: 100%;
-    padding: 0 1;
-    margin-bottom: 0;
-}
-
-#yt-results > ListItem.--highlight .yt-result-title {
-    color: #7e9cd8;
-}
-
-
 
 /* ════════════════════════════════════════════════════════════════════════════
    KEYBIND OVERLAY

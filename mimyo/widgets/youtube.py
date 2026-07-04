@@ -1,13 +1,13 @@
 """
-YouTube support: fetch_youtube_audio downloader and the YoutubeBar overlay widget.
-Both live here so all YouTube-related code is in one place.
+YouTube support: fetch_youtube_audio downloader, search helper, and the
+YoutubeBar overlay widget.  All YouTube-related code lives here.
 """
 from __future__ import annotations
 
 from pathlib import Path
 
 from textual.app import ComposeResult
-from textual.widgets import Static
+from textual.widgets import Static, Label, ListView, ListItem
 
 from ..config import YT_CACHE_DIR
 from ..deps import YTDLP_AVAILABLE
@@ -79,7 +79,6 @@ def fetch_youtube_audio(url: str, on_progress=None) -> tuple[Path, str, float, P
             if not mp3_path.exists():
                 return "mp3 not found after download — ffmpeg may be missing or not on PATH"
 
-            # yt-dlp writes the thumbnail as <id>.webp (or .jpg).
             thumb_path: Path | None = None
             for ext in ("webp", "jpg", "jpeg", "png"):
                 candidate = YT_CACHE_DIR / f"{video_id}.{ext}"
@@ -95,22 +94,128 @@ def fetch_youtube_audio(url: str, on_progress=None) -> tuple[Path, str, float, P
         return msg or "Unknown yt-dlp error"
 
 
+# ── Search helper ─────────────────────────────────────────────────────────────
+
+def search_youtube(query: str, max_results: int = 5) -> list[dict] | str:
+    """
+    Search YouTube for *query* using yt-dlp's ytsearch: prefix.
+
+    Returns a list of dicts with keys: id, title, channel, duration, url
+    or an error string on failure.
+    """
+    if not YTDLP_AVAILABLE:
+        return "yt-dlp not installed"
+    import yt_dlp
+
+    ydl_opts = {
+        "quiet": True,
+        "no_warnings": True,
+        "extract_flat": True,
+        "skip_download": True,
+    }
+    try:
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            result = ydl.extract_info(f"ytsearch{max_results}:{query}", download=False)
+            entries = result.get("entries", []) if result else []
+            results = []
+            for e in entries:
+                if not e:
+                    continue
+                vid_id = e.get("id", "")
+                results.append({
+                    "id": vid_id,
+                    "title": e.get("title", "Unknown"),
+                    "channel": e.get("uploader") or e.get("channel") or "Unknown",
+                    "duration": e.get("duration") or 0,
+                    "url": f"https://www.youtube.com/watch?v={vid_id}",
+                })
+            return results
+    except Exception as e:
+        return str(e).strip() or "Search failed"
+
+
+def _fmt_duration(seconds) -> str:
+    try:
+        s = int(seconds)
+        if s <= 0:
+            return "live"
+        m, s = divmod(s, 60)
+        h, m = divmod(m, 60)
+        return f"{h}:{m:02d}:{s:02d}" if h else f"{m}:{s:02d}"
+    except Exception:
+        return "?"
+
+
+# ── Result list item ──────────────────────────────────────────────────────────
+
+class YTResultItem(ListItem):
+    """A single search result row in the YoutubeBar results list."""
+
+    def __init__(self, result: dict, number: int):
+        super().__init__()
+        self.result = result
+        self.number = number
+
+    def compose(self) -> ComposeResult:
+        dur = _fmt_duration(self.result["duration"])
+        title = self.result["title"]
+        channel = self.result["channel"]
+        num = self.number
+        yield Label(
+            f" {num}  {title}",
+            id=f"yt-result-title-{num}",
+            classes="yt-result-title",
+        )
+        yield Label(
+            f"    {channel}  ·  {dur}",
+            id=f"yt-result-meta-{num}",
+            classes="yt-result-meta",
+        )
+
+
 # ── Widget ────────────────────────────────────────────────────────────────────
 
 class YoutubeBar(Static):
-    """Floating YouTube URL input bar, shown/hidden with the Y key."""
+    """
+    Floating YouTube bar.  Accepts a song name/search query OR a direct URL.
+    - If it looks like a URL → download immediately (original behaviour).
+    - Otherwise → search YouTube, show results, let user pick with ↑↓ + Enter.
+    """
 
     def compose(self) -> ComposeResult:
         from textual.widgets import Input
-        yield Input(placeholder="https://www.youtube.com/watch?v=...", id="yt-input")
+        yield Input(
+            placeholder="Search or paste a URL…",
+            id="yt-input",
+        )
+        yield Label("", id="yt-hint", classes="yt-hint")
+        yield ListView(id="yt-results")
 
     def on_mount(self) -> None:
         inp = self.query_one("#yt-input")
-        inp.border_title = "YouTube URL"
-        inp.border_subtitle = "Enter to add · Esc to cancel"
+        inp.border_title = "YouTube"
+        inp.border_subtitle = "Enter to search · Esc to cancel"
+        self.query_one("#yt-results").display = False
+        self._results: list[dict] = []
+
+    def _reposition(self) -> None:
+        try:
+            parent = self.parent
+            if parent is None:
+                return
+            pw = parent.content_size.width
+            w = self.outer_size.width or 60
+            x = max(0, (pw - w) // 2)
+            self.styles.offset = (x, 2)
+        except Exception:
+            pass
+
+    def on_resize(self) -> None:
+        self._reposition()
 
     def show(self):
         self.add_class("visible")
+        self.call_after_refresh(self._reposition)
         try:
             self.query_one("#yt-input").focus()
         except Exception:
@@ -118,12 +223,64 @@ class YoutubeBar(Static):
 
     def hide(self):
         self.remove_class("visible")
+        self._results = []
         try:
             self.query_one("#yt-input").value = ""
         except Exception:
             pass
+        try:
+            rl = self.query_one("#yt-results", ListView)
+            rl.clear()
+            rl.display = False
+        except Exception:
+            pass
+        try:
+            self.query_one("#yt-hint", Label).update("")
+        except Exception:
+            pass
+        try:
+            inp = self.query_one("#yt-input")
+            inp.border_subtitle = "Enter to search · Esc to cancel"
+        except Exception:
+            pass
+
+    def show_results(self, results: list[dict]):
+        """Populate the results list and make it visible."""
+        self._results = results
+        rl = self.query_one("#yt-results", ListView)
+        rl.clear()
+        for i, r in enumerate(results, 1):
+            rl.append(YTResultItem(r, i))
+        rl.display = True
+        rl.focus()
+        try:
+            inp = self.query_one("#yt-input")
+            inp.border_subtitle = "↑↓ pick · Enter to add · Esc to cancel"
+        except Exception:
+            pass
+
+    def show_hint(self, msg: str):
+        try:
+            self.query_one("#yt-hint", Label).update(msg)
+        except Exception:
+            pass
+
+    def get_selected_result(self) -> dict | None:
+        try:
+            rl = self.query_one("#yt-results", ListView)
+            item = rl.highlighted_child
+            if isinstance(item, YTResultItem):
+                return item.result
+        except Exception:
+            pass
+        return None
 
     def on_key(self, event) -> None:
         if event.key == "escape":
             self.hide()
+            # Return focus to queue or dir list
+            try:
+                self.app.query_one("#dir-list").focus()
+            except Exception:
+                pass
             event.stop()
