@@ -1,4 +1,3 @@
-<img width="1476" height="821" alt="ss1" src="https://github.com/user-attachments/assets/780dc4b2-73d3-468d-9664-db9dfa624c22" />
 # mimyo
 
 ![PyPI](https://img.shields.io/pypi/v/mimyo)
