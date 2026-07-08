@@ -17,8 +17,9 @@ A simple vibecoded terminal music player that takes inspiration from [rmpc](http
 
 - Plays music straight from your terminal
 - Renders album art (sixel support included for compatible terminals)
-- Manages playlists and queues
-- Play audio from YouTube URL
+- Queue management — add, remove, clear, shuffle, repeat, or generate a random queue
+- Playlists — save the current queue and reload it later
+- YouTube integration — search by name or paste a URL, then add results to queue
 - Hooks into Discord rich presence if you want it to
 
 <img width="1686" height="799" alt="ss1" src="https://github.com/user-attachments/assets/a8b7894f-4547-4177-b46d-3f4dda3bd673" />
@@ -30,35 +31,40 @@ A simple vibecoded terminal music player that takes inspiration from [rmpc](http
 ```bash
 pip install mimyo
 ```
-
-For album art rendering, install [chafa](https://hpjansson.org/chafa/):
-- **Windows:** `winget install -e --id hpjansson.Chafa`
-- **macOS:** `brew install chafa`
-- **Linux:** `sudo apt install chafa` or your distro's equivalent
-
-Want Discord rich presence too?
-
-```bash
-pip install "mimyo[discord]"
-```
-### Installing from source
-
+**Installing from source**
 ```bash
 git clone https://github.com/Isht4ros/mimyo.git
 cd mimyo
 pip install .
 ```
 
+### Dependencies
+
+**Album art** — [chafa](https://hpjansson.org/chafa/):
+```bash
+brew install chafa                        # macOS
+winget install -e --id hpjansson.Chafa    # Windows
+sudo apt install chafa                    # Linux
+```
+
+**YouTube audio** — [ffmpeg](https://ffmpeg.org/) (bundles `ffprobe`):
+```bash
+brew install ffmpeg      # macOS
+winget install ffmpeg    # Windows
+sudo apt install ffmpeg  # Linux
+```
+
+### Optional
+Want Discord rich presence too?
+
+```bash
+pip install "mimyo[discord]"
+```
+
 ## Usage
 
 ```bash
 mimyo
-```
-
-Or run it without installing:
-
-```bash
-python -m mimyo
 ```
 
 By default, mimyo looks for a `Music` folder in your home directory. You can point it somewhere else and it'll remember for next time:
